@@ -1,0 +1,19 @@
+procedure fbfs(graph G, node root; nodeProp<int> dist, nodeProp<int> prop) {
+
+  if (G.numNodes() == 0) {
+    return;
+  }
+
+  G.dist = +INF;
+  G.prop = 0;
+  root.dist = 0;
+
+  int cnt = 0;
+  inBFS (n: G.nodes from root) {
+    if ((cnt + 1) / 10 != 0) {
+        n.prop = 2 * cnt + 1;
+        n.dist = currentBFSLevel();
+    }
+    cnt++;
+  }
+}

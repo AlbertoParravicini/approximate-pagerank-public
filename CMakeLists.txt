@@ -1,0 +1,8 @@
+# cmake_minimum_required(VERSION <specify CMake version here>)
+cmake_minimum_required(VERSION 3.14)
+project(Approximate_PR)
+set(CMAKE_CXX_FLAGS "-lboost_program_options  --optimize")
+set(CMAKE_CUDA_COMPILER  /opt/cuda/bin/nvcc)
+set(CMAKE_CXX_STANDARD 17)
+enable_language("CUDA")
+add_executable(build/approx_pr_gpu src/common/parse/parse.h src/common/parse/parse.h.cpp src/common/dense_matrix/dense_matrix.cpp src/common/dense_matrix/dense_matrix.cpp.h src/common/utils/utils.cpp src/commons/utils/utils.h src/gpu/main.cu)

@@ -1,0 +1,65 @@
+plugins {
+    id 'idea'
+    id 'scala'
+    id 'application'
+}
+
+def pgxDir = "$projectDir/../../../pgx-19.3.1"
+def commonDeps = "$pgxDir/shared-lib/common"
+def embeddedDeps = "$pgxDir/shared-lib/embedded"
+def serverDeps = "$pgxDir/shared-lib/server"
+def thirdPartyDeps = "$pgxDir/shared-lib/third-party"
+def smCommonDeps = "$pgxDir/shared-memory/common"
+def smClientDeps = "$pgxDir/shared-memory/client"
+def smEmbeddedDeps = "$pgxDir/shared-memory/embedded"
+def smThirdPartyDeps = "$pgxDir/shared-memory/third-party"
+
+allprojects {
+
+    repositories {
+        mavenLocal()
+        jcenter()
+        mavenCentral()
+    }
+
+    idea {
+        module {
+            downloadJavadoc = true
+            downloadSources = true
+        }
+    }
+
+    ext {
+        pgxVersion = '19.3.1'
+	scalaVersion = '2.12.4'
+    }
+
+    dependencies {
+            // scala
+	    compile group: 'org.scala-lang', name: 'scala-library', version: scalaVersion
+
+	    // https://mvnrepository.com/artifact/org.slf4j/slf4j-simple
+	    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+	    compile 'com.github.scopt:scopt_2.12:3.7.0'
+
+	    // PGX
+	    compile fileTree(dir: commonDeps, includes: ['*.jar'])
+	    compile fileTree(dir: embeddedDeps, includes: ['*.jar'])
+	    compile fileTree(dir: serverDeps, includes: ['*.jar'])
+	    compile fileTree(dir: thirdPartyDeps, includes: ['*.jar'])
+	    compile fileTree(dir: smCommonDeps, includes: ['*.jar'])
+	    compile fileTree(dir: smClientDeps, includes: ['*.jar'])
+	    compile fileTree(dir: smEmbeddedDeps, includes: ['*.jar'])
+	    compile fileTree(dir: smThirdPartyDeps, includes: ['*.jar'])
+    }
+}
+
+apply plugin: "java"
+apply plugin: 'application'
+apply plugin: 'scala'
+
+mainClassName = 'benchmark.Main'
+
+tasks.withType(JavaExec) {
+  jvmArgs = [ '-Dpgx_conf=conf/pgx.conf']
+}

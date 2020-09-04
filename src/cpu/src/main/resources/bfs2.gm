@@ -1,0 +1,16 @@
+procedure bfs2(graph G, long max_vertices; nodeProp<int> dist) {
+
+  if (G.numNodes() == 0) {
+    return;
+  }
+  long cnt = 0;
+  
+  for (s : G.nodes) (cnt <= max_vertices) {
+    cnt++;
+    G.dist = +INF;
+    s.dist = 0;
+    inBFS (n: G.nodes from s) {
+      n.dist = currentBFSLevel();
+    }
+  }
+}

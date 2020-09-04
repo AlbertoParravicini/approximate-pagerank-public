@@ -1,0 +1,29 @@
+procedure cc(graph G, long max_vertices; nodeProp<double> cc) : bool {
+  bool connected = true;
+
+  long cnt = 0;
+
+  for (s : G.nodes) (cnt <= max_vertices) {
+    cnt++;
+    long foundNodes = 0;
+    long levelSum;
+
+    inBFS (v: G.nodes from s) {
+      foundNodes++;
+      levelSum += currentBFSLevel();
+    }
+
+    if (foundNodes != G.numNodes() || levelSum == 0) {
+      connected &= false;
+    } else {
+      s.cc = 1.0 / levelSum;
+    }
+  }
+
+  if (connected) {
+    return true;
+  } else {
+    G.cc = 0.0; // disconnected graph
+    return false;
+  }
+}

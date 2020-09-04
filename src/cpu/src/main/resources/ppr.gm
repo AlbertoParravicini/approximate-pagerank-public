@@ -1,0 +1,26 @@
+procedure personalized_pagerank(graph G, node v, double damp, int max_iter, bool norm;
+    nodeProp<double> rank) {
+
+  double N = G.numNodes();
+
+  double diff;
+  int cnt = 0;
+  G.rank = 0;
+  v.rank = 1.0;
+
+  do {
+    double dangling_factor = 0;
+
+    if (norm) {
+      dangling_factor = damp / N * sum (n: G.nodes) (n.outDegree() == 0) {n.rank};
+    }
+
+    foreach (t: G.nodes) {
+      double val1 = (t == v) ? (1 - damp) : 0;
+      double val2 = damp * sum (w: t.inNbrs) {w.rank / w.outDegree()};
+      double val = val1 + val2 + dangling_factor;
+      t.rank <= val;
+    }
+    cnt++;
+  } while (cnt < max_iter);
+}

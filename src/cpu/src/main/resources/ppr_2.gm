@@ -1,0 +1,89 @@
+procedure personalized_pagerank(graph G, node v1, node v2, node v3, node v4, node v5, node v6, node v7, node v8, double damp, int max_iter, bool norm;
+    vertexProp<double> rank1, vertexProp<double> rank2, vertexProp<double> rank3, vertexProp<double> rank4, vertexProp<double> rank5, vertexProp<double> rank6, vertexProp<double> rank7, vertexProp<double> rank8) {
+
+  double N = G.numNodes();
+
+  double diff;
+  int cnt = 0;
+  G.rank1 = 0;
+  G.rank2 = 0;
+  G.rank3 = 0;
+  G.rank4 = 0;
+  G.rank5 = 0;
+  G.rank6 = 0;
+  G.rank7 = 0;
+  G.rank8 = 0;
+  v1.rank1 = 1.0;
+  v2.rank2 = 1.0;
+  v3.rank3 = 1.0;
+  v4.rank4 = 1.0;
+  v5.rank5 = 1.0;
+  v6.rank6 = 1.0;
+  v7.rank7 = 1.0;
+  v8.rank8 = 1.0;
+
+  do {
+    double dangling_factor1 = 0;
+    double dangling_factor2 = 0;
+    double dangling_factor3 = 0;
+    double dangling_factor4 = 0;
+    double dangling_factor5 = 0;
+    double dangling_factor6 = 0;
+    double dangling_factor7 = 0;
+    double dangling_factor8 = 0;
+
+    if (norm) {
+      dangling_factor1 = damp / N * sum (n: G.nodes) (n.outDegree() == 0) {n.rank1};
+      dangling_factor2 = damp / N * sum (n: G.nodes) (n.outDegree() == 0) {n.rank2};
+      dangling_factor3 = damp / N * sum (n: G.nodes) (n.outDegree() == 0) {n.rank3};
+      dangling_factor4 = damp / N * sum (n: G.nodes) (n.outDegree() == 0) {n.rank4};
+      dangling_factor5 = damp / N * sum (n: G.nodes) (n.outDegree() == 0) {n.rank5};
+      dangling_factor6 = damp / N * sum (n: G.nodes) (n.outDegree() == 0) {n.rank6};
+      dangling_factor7 = damp / N * sum (n: G.nodes) (n.outDegree() == 0) {n.rank7};
+      dangling_factor8 = damp / N * sum (n: G.nodes) (n.outDegree() == 0) {n.rank8};
+    }
+
+    foreach (t: G.nodes) {
+      double val1 = (t == v1) ? (1 - damp) : 0;
+      double val2 = damp * sum (w: t.inNbrs) {w.rank1 / w.outDegree()};
+      double val = val1 + val2 + dangling_factor1;
+      t.rank1 <= val;
+
+      val1 = (t == v2) ? (1 - damp) : 0;
+      val2 = damp * sum (w: t.inNbrs) {w.rank2 / w.outDegree()};
+      val = val1 + val2 + dangling_factor2;
+      t.rank2 <= val;
+
+      val1 = (t == v3) ? (1 - damp) : 0;
+      val2 = damp * sum (w: t.inNbrs) {w.rank3 / w.outDegree()};
+      val = val1 + val2 + dangling_factor3;
+      t.rank3 <= val;
+
+      val1 = (t == v4) ? (1 - damp) : 0;
+      val2 = damp * sum (w: t.inNbrs) {w.rank4 / w.outDegree()};
+      val = val1 + val2 + dangling_factor4;
+      t.rank4 <= val;
+
+      val1 = (t == v5) ? (1 - damp) : 0;
+      val2 = damp * sum (w: t.inNbrs) {w.rank5 / w.outDegree()};
+      val = val1 + val2 + dangling_factor5;
+      t.rank5 <= val;
+
+      val1 = (t == v6) ? (1 - damp) : 0;
+      val2 = damp * sum (w: t.inNbrs) {w.rank6 / w.outDegree()};
+      val = val1 + val2 + dangling_factor6;
+      t.rank6 <= val;
+
+      val1 = (t == v7) ? (1 - damp) : 0;
+      val2 = damp * sum (w: t.inNbrs) {w.rank7 / w.outDegree()};
+      val = val1 + val2 + dangling_factor7;
+      t.rank7 <= val;
+
+      val1 = (t == v8) ? (1 - damp) : 0;
+      val2 = damp * sum (w: t.inNbrs) {w.rank8 / w.outDegree()};
+      val = val1 + val2 + dangling_factor8;
+      t.rank8 <= val;
+    }
+    cnt++;
+  } while (cnt < max_iter);
+}

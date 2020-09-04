@@ -1,0 +1,14 @@
+procedure bfs(graph G, node root; nodeProp<int> dist) {
+
+  if (G.numNodes() == 0) {
+    return;
+  }
+
+  G.dist = +INF;
+
+  root.dist = 0;
+
+  inBFS (n: G.nodes from root) {
+    n.dist = currentBFSLevel();
+  }
+}

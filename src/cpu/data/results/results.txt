@@ -1,0 +1,145 @@
+Wikipedia Full Undirected
+
+------------------------------
+- V: 11903507
+- E: 100498180 (57216619 bidirectional edges)
+------------------------------
+
+Machine: horde05, 56 threads, 756GB
+
+Graph Loading Time: 270 sec
+
+------------------------------
+BFS, starting at ID 0 ("AccessibleComputing")
+20 iterations
+
+bfs, first_run, 1266,
+bfs, next_run, 335,
+bfs, next_run, 323,
+bfs, next_run, 275,
+bfs, next_run, 275,
+bfs, next_run, 286,
+bfs, next_run, 357,
+bfs, next_run, 270,
+bfs, next_run, 270,
+bfs, next_run, 288,
+bfs, next_run, 269,
+bfs, next_run, 264,
+bfs, next_run, 273,
+bfs, next_run, 302,
+bfs, next_run, 283,
+bfs, next_run, 285,
+bfs, next_run, 285,
+bfs, next_run, 264,
+bfs, next_run, 258,
+bfs, next_run, 265,
+bfs, next_run, 269,
+bfs, next_run, 265,
+
+------------------------------
+BFS, starting at ID 0 ("AccessibleComputing")
+20 iterations
+
+fbfs, first_run, 1769
+fbfs, next_run, 848,
+fbfs, next_run, 967,
+fbfs, next_run, 947,
+fbfs, next_run, 773,
+fbfs, next_run, 705,
+fbfs, next_run, 693,
+fbfs, next_run, 833,
+fbfs, next_run, 862,
+fbfs, next_run, 751,
+fbfs, next_run, 778,
+fbfs, next_run, 757,
+fbfs, next_run, 801,
+fbfs, next_run, 701,
+fbfs, next_run, 734,
+fbfs, next_run, 696,
+fbfs, next_run, 948,
+fbfs, next_run, 737,
+fbfs, next_run, 732,
+fbfs, next_run, 730,
+fbfs, next_run, 1721,
+fbfs, next_run, 773
+
+------------------------------
+Closeness Centrality, 50 vertices
+20 iterations
+
+cc, first_run, 47045
+cc, next_run, 36704,
+cc, next_run, 39600,
+cc, next_run, 37461,
+cc, next_run, 42729,
+cc, next_run, 39175,
+cc, next_run, 35584,
+cc, next_run, 35695,
+cc, next_run, 38654,
+cc, next_run, 40873,
+cc, next_run, 55222,
+cc, next_run, 43437,
+cc, next_run, 35539,
+cc, next_run, 43248,
+cc, next_run, 36489,
+cc, next_run, 35619,
+cc, next_run, 47035,
+cc, next_run, 34781,
+cc, next_run, 46347,
+cc, next_run, 63302,
+cc, next_run, 38859,
+cc, next_run, 36010,
+
+------------------------------
+Eccentricity, 50 vertices
+20 iterations
+
+eccentricity, first_run, 38345,
+eccentricity, next_run, 30543,
+eccentricity, next_run, 40484,
+eccentricity, next_run, 37146,
+eccentricity, next_run, 36915,
+eccentricity, next_run, 36491,
+eccentricity, next_run, 38386,
+eccentricity, next_run, 31923,
+eccentricity, next_run, 35132,
+eccentricity, next_run, 34099,
+eccentricity, next_run, 34871,
+eccentricity, next_run, 31969,
+eccentricity, next_run, 28393,
+eccentricity, next_run, 33150,
+eccentricity, next_run, 29527,
+eccentricity, next_run, 29356,
+eccentricity, next_run, 34831,
+eccentricity, next_run, 34141,
+eccentricity, next_run, 29545,
+eccentricity, next_run, 37869,
+eccentricity, next_run, 41744,
+eccentricity, next_run, 41205,
+
+------------------------------
+PageRank, 10E-6 convergence
+20 iterations
+
+pagerank, first_run, 5707
+pagerank, next_run, 4515,
+pagerank, next_run, 4501,
+pagerank, next_run, 5101,
+pagerank, next_run, 4938,
+pagerank, next_run, 4979,
+pagerank, next_run, 4821,
+pagerank, next_run, 4582,
+pagerank, next_run, 4444,
+pagerank, next_run, 4585,
+pagerank, next_run, 4566,
+pagerank, next_run, 4706,
+pagerank, next_run, 4822,
+pagerank, next_run, 4856,
+pagerank, next_run, 4540,
+pagerank, next_run, 4613,
+pagerank, next_run, 4792,
+pagerank, next_run, 4890,
+pagerank, next_run, 4705,
+pagerank, next_run, 4701,
+pagerank, next_run, 4536,
+pagerank, next_run, 4656
