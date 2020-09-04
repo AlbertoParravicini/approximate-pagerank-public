@@ -7,7 +7,7 @@
 //////////////////////////////
 //////////////////////////////
 
-#define DEBUG true
+#define DEBUG false
 #define USE_CSC false
 #define OUTPUT_RESULT ""
 // Paths are relative to the FPGA implementations!

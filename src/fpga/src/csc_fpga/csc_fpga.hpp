@@ -26,6 +26,8 @@
 #define MAX_N MAX_VERTICES
 #define MAX_N_BUFFER (MAX_N / BUFFER_SIZE)
 
+#define MAX_ITERATIONS 1024
+
 // Values used to specify the trip-count of HLS loops;
 const int hls_buffer_size = BUFFER_SIZE;
 const int hls_num_vertices = 1000;
@@ -34,11 +36,19 @@ const int hls_num_edges = hls_degree * hls_num_vertices;
 const int hls_iterations_v = hls_num_vertices / hls_buffer_size;
 const int hls_iterations_e = hls_num_edges / hls_buffer_size;
 const int hls_iterations_bitmap = hls_num_vertices / AP_UINT_BITWIDTH;
+const int hls_max_iter = MAX_ITERATIONS;
+const int hls_iter = 6;
+const int hls_write_errors_iter = N_PPR_VERTICES * hls_iter;
 
 typedef ap_uint<1> dangling_type;
 typedef ap_ufixed<FIXED_WIDTH, FIXED_INTEGER_PART, AP_TRN_ZERO> fixed_float;
 //typedef ap_ufixed<FIXED_WIDTH, FIXED_INTEGER_PART, AP_TRN_ZERO, AP_SAT_ZERO> fixed_float;
 // typedef float fixed_float;
+
+// Type use for L2 error norm;
+typedef ap_ufixed<32, 2, AP_TRN_ZERO> fixed_error_float;
+//typedef float fixed_error_float;
+
 
 typedef ap_uint<AP_UINT_BITWIDTH> input_block;
 

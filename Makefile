@@ -8,7 +8,7 @@
 #
 #######################################################################################################################################
 
-XOCC=xocc
+XOCC=v++
 CC=xcpp
 
 #############################
@@ -47,8 +47,8 @@ TARGET_CLOCK=400
 PORT_WIDTH=256
 
 # Device code for Alveo U200;
-ALVEO_U200=xilinx_u200_xdma_201830_1
-ALVEO_U200_DEVICE="\"xilinx_u200_xdma_201830_1"\"
+ALVEO_U200=xilinx_u200_xdma_201830_2
+ALVEO_U200_DEVICE="\"xilinx_u200_xdma_201830_2"\"
 TARGET_DEVICE=$(ALVEO_U200)
 
 # Flags to provide to xocc, specify here associations between memory bundles and physical memory banks.
@@ -65,7 +65,7 @@ KERNEL_ADDITIONAL_FLAGS=--kernel_frequency $(TARGET_CLOCK) -O3
 
 # Specify host compile flags and linker;
 HOST_INCLUDES=-I$(HOST_HEADER_DIRS) -I${XILINX_XRT}/include -I${XILINX_VIVADO}/include
-HOST_CFLAGS=$(HOST_INCLUDES) -D TARGET_DEVICE=$(ALVEO_U200_DEVICE) -g -D C_KERNEL -O3 -std=c++14 -Wall
+HOST_CFLAGS=$(HOST_INCLUDES) -D TARGET_DEVICE=$(ALVEO_U200_DEVICE) -g -D C_KERNEL -O3 -std=c++14 
 HOST_LFLAGS=-L${XILINX_XRT}/lib -lxilinxopencl -lOpenCL
 
 #############################
@@ -102,9 +102,6 @@ PERIOD:= :
 UNDERSCORE:= _
 DEST_DIR=build/$(TARGET)/$(subst $(PERIOD),$(UNDERSCORE),$(TARGET_DEVICE))
 
-ifndef XILINX_SDX
-$(error XILINX_SDX is not set. Please source the SDx settings64.{csh,sh} first)
-endif
 
 #############################
 # Define targets ############

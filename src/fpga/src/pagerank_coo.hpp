@@ -10,6 +10,7 @@ struct PageRankCOO : PageRank {
 		initialize_dangling_bitmap();
 
 		result = std::vector<fixed_float>(N * N_PPR_VERTICES, 0);
+		errors = std::vector<fixed_error_float, float_error_allocator>(max_iter * N_PPR_VERTICES, 0);
 
 		// Update the number of blocks to reflect the use of additional self-loops;
 		E_fixed = input_graph->E_fixed;
@@ -26,16 +27,20 @@ struct PageRankCOO : PageRank {
 	cl::Buffer d_coo_start;
 	cl::Buffer d_coo_end;
 	cl::Buffer d_coo_val;
+	cl::Buffer d_errors;
 
 	// Kernel inputs (partitioned);
 	std::vector<input_block, allocator> start_in;
     std::vector<input_block, allocator> end_in;
     std::vector<input_block, allocator> val_in;
 
+    std::vector<fixed_error_float, float_error_allocator> errors;
+
 	void setup_inputs(ConfigOpenCL &config, bool debug = false) override;
 	void initialize_dangling_bitmap() override;
 	double transfer_input_data(ConfigOpenCL &config, bool measure_time = true, bool debug = false) override;
 	double execute(ConfigOpenCL &config, bool measure_time = true, bool debug = false) override;
 	double reset(ConfigOpenCL &config, bool measure_time = true, bool debug = false) override;
+	double reset(ConfigOpenCL &config, std::vector<index_type> &personalization_vertices, bool measure_time = true, bool debug = false);
     void preprocess_inputs() override;
 };

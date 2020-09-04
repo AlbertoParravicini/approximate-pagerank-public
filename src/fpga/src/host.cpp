@@ -19,6 +19,7 @@
 #include <getopt.h>
 #include <ap_int.h>
 #include <chrono>
+#include <time.h>
 
 #include "opencl_utils.hpp"
 #include "../../common/csc_matrix/csc_matrix.hpp"
@@ -41,6 +42,9 @@ using clock_type = chrono::high_resolution_clock;
 /////////////////////////////
 
 int main(int argc, char *argv[]) {
+
+	// Initialize PRD;
+	srand(time(0));
 
 	/////////////////////////////
 	// Input parameters /////////
@@ -221,8 +225,20 @@ int main(int argc, char *argv[]) {
 
 		exec_times[i] = results.execution_time;
 
+		if (debug) {
+			std::cout << "Convergence L2 error" << std::endl;
+			for (int j = 0; j < N_PPR_VERTICES; ++j) {
+				std::cout << j << ") ";
+				for (int iter = 0; iter < pr.max_iter; iter++) {
+					std::cout << pr.errors[iter * N_PPR_VERTICES + j].to_float() << ", ";
+				}
+				std::cout << ";" << std::endl;
+			}
+		}
+
 		auto results_fixed_idx = std::vector<std::vector<int>>();
 		auto results_golden_idx = std::vector<std::vector<int>>();
+		auto fpga_results = std::vector<std::vector<fixed_float>>();
 		for (int j = 0; j < N_PPR_VERTICES; ++j) {
 			int cur_begin = j * pr.N;
 			int cur_end = (j + 1) * pr.N;
@@ -230,6 +246,7 @@ int main(int argc, char *argv[]) {
 					pr.result.data() + cur_end);
 			auto tmp_sorted = sort_pr(pr.N, tmp.data());
 			results_fixed_idx.push_back(tmp_sorted);
+			fpga_results.push_back(tmp);
 
 			results_golden_idx.push_back(
 					sort_pr(pr.N, results_golden[j].data()));
@@ -252,7 +269,8 @@ int main(int argc, char *argv[]) {
 		std::vector<std::vector<double>> temp_ndcg(N_PPR_VERTICES);
 		std::vector<std::vector<int>> temp_errors(N_PPR_VERTICES);
 		std::vector<std::vector<unsigned int>> temp_edit_dist(N_PPR_VERTICES);
-		auto bounds = std::vector<int> { 10, 20, 50 };
+		const int MAX_BOUND = 50;
+		auto bounds = std::vector<int> { 10, 20, MAX_BOUND };
 
 		for (int j = 0; j < N_PPR_VERTICES; ++j) {
 			if (debug)
@@ -264,6 +282,42 @@ int main(int argc, char *argv[]) {
 			temp_edit_dist[j] = bounded_edit_distance(results_golden_idx[j],
 					results_fixed_idx[j], bounds, debug);
 
+		}
+
+		// Store the top 50 predictions in a string, along with the correct predictions;
+		std::string curr_golden_pred_str = "";
+		std::string curr_pred_str = "";
+		for (unsigned int j = 0; j < N_PPR_VERTICES; ++j) {
+			std::string tmp_golden_pred_str = "";
+			std::string tmp_pred_str = "";
+			for (int k = 0; k < MAX_BOUND; ++k) {
+				tmp_golden_pred_str += std::to_string(results_golden_idx[j][k]) + "|";
+				tmp_pred_str += std::to_string(results_fixed_idx[j][k]) + "|";
+			}
+			curr_golden_pred_str += tmp_golden_pred_str + ";";
+			curr_pred_str += tmp_pred_str + ";";
+		}
+
+		// Store the mME computed between the PPR values of the top-N CPU values and the corresponding PPR values computed by the FPGA;
+		std::string curr_mae_str = "";
+		for (unsigned int j = 0; j < N_PPR_VERTICES; ++j) {
+			std::string tmp_mae_str = "";
+			if (debug) {
+				std::cout << "Personalization vector " << j << ")" << std::endl;
+			}
+			for (auto b : bounds) {
+				double mae = 0;
+				for (int k = 0; k < b; ++k) {
+					auto cpu_result = results_golden[j][results_golden_idx[j][k]];
+					auto fpga_result = (fpga_results[j][results_golden_idx[j][k]]).to_float();
+					mae += std::abs((cpu_result - fpga_result));
+				}
+				tmp_mae_str += std::to_string(mae) + "|";
+				if (debug) {
+					std::cout << "top " << b << ") mae = " << mae << std::endl;
+				}
+			}
+			curr_mae_str += tmp_mae_str + ";";
 		}
 
 		// Store error count and NDCGS for each personalization vertex inside a ";" separated list;
@@ -293,10 +347,20 @@ int main(int argc, char *argv[]) {
 		ndcgs[i] = curr_ndcgs_str;
 		edit_distances[i] = curr_edit_str;
 
+		// Write the convergence error of each vertex over time;
+		std::string curr_convergence_error_str = "";
+		for (int j = 0; j < N_PPR_VERTICES; ++j) {
+			std::string tmp_convergence_error_str = "";
+			for (int k = 0; k < pr.max_iter; ++k) {
+				tmp_convergence_error_str += std::to_string(pr.errors[k * N_PPR_VERTICES + j].to_float()) + "|";
+			}
+			curr_convergence_error_str += tmp_convergence_error_str + ";";
+		}
+
 		if (!debug) {
 			if (i == 0) {
 				std::cout << "fixed_float_width,fixed_float_scale,v,e,"
-						<< "execution_time,transfer_time,error_pct,normalized_dcg, edit_dist"
+						<< "execution_time,transfer_time,error_pct,normalized_dcg,edit_dist,convergence_error,mae,fpga_predictions,cpu_predictions"
 						<< std::endl;
 			}
 			std::cout << results.fixed_float_width << ","
@@ -304,6 +368,10 @@ int main(int argc, char *argv[]) {
 					<< "," << results.n_edges << "," << results.execution_time
 					<< "," << results.transfer_time << "," << curr_err_str
 					<< "," << curr_ndcgs_str << "," << curr_edit_str
+					<< "," << curr_convergence_error_str
+					<< "," << curr_mae_str
+					<< "," << curr_pred_str
+					<< "," << curr_golden_pred_str
 					<< std::endl;
 		}
 	}
@@ -312,16 +380,17 @@ int main(int argc, char *argv[]) {
 		cout.precision(2);
 		std::cout << "\n----------------\n- Results ------\n----------------"
 				<< std::endl;
-		std::cout << "Mean transfer time:  " << mean(trans_times) << "±"
+		std::cout << "Mean transfer time:  " << mean(trans_times) << "Â±"
 				<< st_dev(trans_times) << " ms;" << std::endl;
-		std::cout << "Mean execution time: " << mean(exec_times) << "±"
+		std::cout << "Mean execution time: " << mean(exec_times) << "Â±"
 				<< st_dev(exec_times) << " ms;" << std::endl;
-		std::cout << "Mean % error: " << mean(all_errors) << "±"
+		std::cout << "Mean % error: " << mean(all_errors) << "Â±"
 				<< st_dev(all_errors) << " %;" << std::endl;
-		std::cout << "Mean NDCG: " << mean(all_ndcgs) << "±"
+		std::cout << "Mean NDCG: " << mean(all_ndcgs) << "Â±"
 				<< st_dev(all_ndcgs) << ";" << std::endl;
 		std::cout << "----------------" << std::endl;
 		cout.precision(old_precision);
 	}
 }
+
 

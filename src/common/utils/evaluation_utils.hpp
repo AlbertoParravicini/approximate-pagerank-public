@@ -39,6 +39,26 @@ inline std::vector<int> sort_pr(size_t DIM, T *pr) {
 }
 
 template<typename T>
+inline std::vector<std::pair<int, T>> sort_pr_with_value(size_t DIM, T *pr) {
+
+	std::map<int, T> pr_map;
+	std::vector<std::pair<int, T>> sorted_pr;
+
+	for (uint i = 0; i < DIM; ++i) {
+		sorted_pr.push_back( { i, pr[i] });
+		pr_map[i] = pr[i];
+	}
+
+	std::sort(sorted_pr.begin(), sorted_pr.end(),
+			[](const std::pair<int, num_type> &l, const std::pair<int, num_type> &r) {
+				if (l.second != r.second)return l.second > r.second;
+				else return l.first > r.first;
+			});
+
+	return sorted_pr;
+}
+
+template<typename T>
 inline int compare_results(const size_t DIM, T *pr,
 		std::string golden_result_path, bool debug = false) {
 

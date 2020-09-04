@@ -18,11 +18,11 @@ TYPES = ["pc", "scf", "smw", "gnp"]
 DEFAULT_TYPE = TYPES[0]
 
 N = 100
-PC_M = 10
+PC_M = 1000
 PC_P = 0.1
-SMW_K = 20
+SMW_K = 200
 SMW_P = 0.2
-GNP_DEGREE = 10
+GNP_DEGREE = 1
 
 if __name__ == "__main__":
     
@@ -81,7 +81,7 @@ if __name__ == "__main__":
             print(f"\nGraph generation time: {(end - start):.2f} seconds")
             v = g.number_of_nodes()
             e = g.number_of_edges()
-            print(f"- |N|: {v}; |E|: {e}; sparsity: {e / e**2:.4f}")
+            print(f"- |N|: {v}; |E|: {e}; sparsity: {e / v**2:.4f}")
             
             # Undirect the graph;
             if undirect:

@@ -55,7 +55,23 @@ void personalized_pagerank_vector_ops_local_buffer_only(
 		fixed_float scaling_factor[N_PPR_VERTICES],
 		fixed_float pr_in[N_PPR_VERTICES][MAX_VERTICES],
 		fixed_float pr_out[N_PPR_VERTICES][MAX_VERTICES],
-		fixed_float shift_factor, index_type personalization_vertices[N_PPR_VERTICES]) {
+		fixed_float shift_factor, index_type personalization_vertices[N_PPR_VERTICES],
+		fixed_error_float errors[N_PPR_VERTICES][MAX_ITERATIONS],
+		unsigned int num_iteration) {
+
+		// Use a buffer to compute the error norm;
+	fixed_error_float error_buffer[N_PPR_VERTICES][BUFFER_SIZE];
+#pragma HLS array_partition variable=error_buffer complete
+#pragma HLS array_partition variable=error_buffer complete
+
+	// Initialize the errors buffer;
+	for (unsigned int k = 0; k < N_PPR_VERTICES; k++) {
+#pragma HLS unroll
+		for (unsigned int j = 0; j < BUFFER_SIZE; j++) {
+#pragma HLS unroll
+			error_buffer[k][j] = 0;
+		}
+	}
 
 	AXPB: for (int i = 0; i < num_blocks_n; i++) {
 #pragma HLS pipeline II=1
@@ -70,13 +86,25 @@ void personalized_pagerank_vector_ops_local_buffer_only(
 	#pragma HLS unroll
 				int idx = i * BUFFER_SIZE + j;
 
+				fixed_float pr_curr_in = pr_in[k][idx];
+				fixed_float pr_curr_old = pr_out[k][idx];
+
 				// Scale the current PPR values;
-				fixed_float updated_pr_value = alpha * pr_in[k][idx] + curr_scaling + ((idx == curr_pers) ? shift_factor : (fixed_float) 0);
+				fixed_float updated_pr_value = alpha * pr_curr_in + curr_scaling + ((idx == curr_pers) ? shift_factor : (fixed_float) 0);
 				pr_out[k][idx] = updated_pr_value;
+
+				// Keep track of the error L2 norm;
+				error_buffer[k][j] += (fixed_error_float) ((updated_pr_value - pr_curr_old) * (updated_pr_value - pr_curr_old));
+
 				// Reset the other PPR buffer;
 				pr_in[k][idx] = (fixed_float) 0;
 			}
 		}
+	}
+
+	for (unsigned int k = 0; k < N_PPR_VERTICES; k++) {
+#pragma HLS unroll
+		errors[k][num_iteration] = reduction(error_buffer[k]);
 	}
 }
 
@@ -86,7 +114,7 @@ void personalized_pagerank_vector_ops_local_buffer_only(
 void multi_ppr_main(input_block *start, input_block *end,
 		input_block *val, index_type N, index_type E,
 		input_block *result, input_block *dangling_bitmap,
-		float max_err, float alpha, index_type max_iter, index_type *personalization_vertices) {
+		float max_err, float alpha, index_type max_iter, index_type *personalization_vertices, fixed_error_float* errors) {
 // Ports used to transfer data, using AXI master;
 #pragma HLS INTERFACE m_axi port = start offset = slave bundle = gmem0
 #pragma HLS INTERFACE m_axi port = end offset = slave bundle = gmem1
@@ -94,7 +122,8 @@ void multi_ppr_main(input_block *start, input_block *end,
 
 #pragma HLS INTERFACE m_axi port = result offset = slave bundle = gmem0
 #pragma HLS INTERFACE m_axi port = dangling_bitmap offset = slave bundle = gmem2
-#pragma HLS INTERFACE m_axi port = personalization_vertices offset = slave bundle = gmem3
+#pragma HLS INTERFACE m_axi port = personalization_vertices offset slave bundle = gmem3
+#pragma HLS INTERFACE m_axi port = errors offset slave bundle = gmem3
 
 // Ports used for control signals, using AXI slave;
 #pragma HLS INTERFACE s_axilite register port = N bundle = control
@@ -136,6 +165,11 @@ void multi_ppr_main(input_block *start, input_block *end,
 #pragma HLS array_partition variable=pr_local complete dim=1
 #pragma HLS resource variable=pr_local core=XPM_MEMORY uram
 
+	// Allocate a local buffer to store the error values;
+	static fixed_error_float errors_local[N_PPR_VERTICES][MAX_ITERATIONS];
+#pragma HLS array_reshape variable=errors_local cyclic factor=hls_buffer_size dim=2
+#pragma HLS array_partition variable=errors_local complete dim=1
+
 	// Reset the local PR buffer;
 	READ_PR: for (index_type i = 0; i < num_blocks_n; i++) {
 #pragma HLS PIPELINE II=1
@@ -148,6 +182,17 @@ void multi_ppr_main(input_block *start, input_block *end,
 		}
 	}
 
+	// Reset the local error buffer;
+	RESET_ERROR: for (index_type i = 0; i < MAX_ITERATIONS / BUFFER_SIZE; i++) {
+#pragma HLS PIPELINE II=1
+#pragma HLS loop_tripcount min=hls_max_iter max=hls_max_iter avg=hls_max_iter
+		for (index_type j = 0; j < BUFFER_SIZE; j++) {
+			for (index_type k = 0; k < N_PPR_VERTICES; k++) {
+				errors_local[k][i * BUFFER_SIZE + j] = (fixed_error_float) 0;
+			}
+		}
+	}
+
 	// Copy personalization vertices in local buffer and initialize PR;
 	SET_PERSONALIZATION_VERTICES: for (index_type i = 0; i < N_PPR_VERTICES; i++) {
 #pragma HLS unroll
@@ -156,9 +201,12 @@ void multi_ppr_main(input_block *start, input_block *end,
 		local_personalization_vertices[i] = personalization_vertex;
 	}
 
+	// Fix the maximum number of iterations;
+	unsigned int num_effective_iter = (max_iter < MAX_ITERATIONS) ? max_iter : MAX_ITERATIONS;
+
 	// Main loop of PageRank;
-	while (iter < max_iter) {
-#pragma HLS loop tripcount min=6 max=6 avg=6
+	while (iter < num_effective_iter) {
+#pragma HLS loop tripcount min=hls_iter max=hls_iter avg=hls_iter
 
 		compute_scaling_factor(num_blocks_n, dangling_scale, shift_factor, dangling_bitmap, pr_local, scaling_factor);
 
@@ -168,8 +216,16 @@ void multi_ppr_main(input_block *start, input_block *end,
 		// Execute other operations to update the PageRank vector;
 		// Additionally, reset the pr_local_result buffer;
 		personalized_pagerank_vector_ops_local_buffer_only(num_blocks_n, a, scaling_factor,
-				pr_local_result, pr_local, shift_factor, local_personalization_vertices);
+				pr_local_result, pr_local, shift_factor, local_personalization_vertices, errors_local, iter);
 		iter++;
+	}
+
+	WRITE_ERROR: for (index_type i = 0; i < num_effective_iter * N_PPR_VERTICES; i++) {
+#pragma HLS PIPELINE II=1
+#pragma HLS loop tripcount min=hls_write_errors_iter max=hls_write_errors_iter avg=hls_write_errors_iter
+		index_type j = i / N_PPR_VERTICES;
+		index_type q = i % N_PPR_VERTICES;
+		errors[i] = errors_local[q][j];
 	}
 
 	WRITE_RESULT: for (index_type i = 0; i < N_PPR_VERTICES; i++) {

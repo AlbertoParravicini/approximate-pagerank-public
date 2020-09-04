@@ -244,7 +244,6 @@ inline int find_xilinx_device(ConfigOpenCL &config, std::vector<std::string> &ta
 				for (size_t j = 0; j < devices.size(); j++) {
 					cl::Device device = devices[j];
 					std::string device_name = device.getInfo<CL_DEVICE_NAME>();
-					std::cout << "INFO: Inspecting target device " << device_name << std::endl;
 					if (device_name == target_device_name) {
 						found_device = true;
 						config.device = device;

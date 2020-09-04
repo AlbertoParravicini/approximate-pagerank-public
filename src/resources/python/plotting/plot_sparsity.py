@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jan 29 16:30:36 2020
+Created on Sat May 16 12:49:37 2020
 
 @author: aparravi
 """
@@ -18,6 +18,7 @@ from matplotlib.patches import Patch, Rectangle
 from plot_exec_time import get_exp_label, get_upper_ci_size
 from matplotlib.collections import PatchCollection, LineCollection
 from matplotlib.lines import Line2D
+from plot_errors import kendall_tau
 
 
 # Define some colors;
@@ -47,46 +48,18 @@ b8 = "#7bd490"
 bt1 = "#55819E"
 bt2 = "#538F6F"
 
-MAIN_RESULT_FOLDER = "../../../../data/results/raw_results/2020_01_25"
-DATE = "2020_05_142"
+bt1 = "#55819E"
+bt2 = "#538F6F"
 
-def kendall_tau(reference_rank, predicted_rank):
-    
-    # Items with correct relative rank;
-    c_plus = 0
-    # Items without correct relative rank;
-    c_minus = 0
-    # Items for which a ranking exists in the predicted rank;
-    c_s = 0
-    # Items for which a ranking exists in the reference rank;
-    c_u = 0
-    
-    item_set = set(reference_rank + predicted_rank)
-    reference_rank_dict = {item: pos for pos, item in enumerate(reference_rank)}
-    predicted_rank_dict = {item: pos for pos, item in enumerate(predicted_rank)}
-    
-    for i, item_1 in enumerate(item_set):
-        for j, item_2 in enumerate(item_set):
-            # Consider each pair exactly once;
-            if i >= j:
-                continue
-            else:
-                ref_found = False
-                pred_found = False
-                if item_1 in reference_rank_dict and item_2 in reference_rank_dict:
-                    ref_found = True
-                    c_u += 1
-                if item_1 in predicted_rank_dict and item_2 in predicted_rank_dict:
-                    pred_found = True
-                    c_s += 1
-                if ref_found and pred_found:
-                    if (reference_rank_dict[item_1] - reference_rank_dict[item_2]) * (predicted_rank_dict[item_1] - predicted_rank_dict[item_2]) > 0:
-                        c_plus += 1
-                    else:
-                        c_minus += 1
-                        
-    return (c_plus - c_minus) / (np.sqrt(c_u) * np.sqrt(c_s))
+bb0 = "#FFA685"
+bb1 = "#75B0A2"
+bb2 = b3
+bb3 = b7
+bb4 = "#7ED7B8"
+bb5 = "#7BD490"
 
+MAIN_RESULT_FOLDER = "../../../../data/results/raw_results/2020_05_16"
+DATE = "2020_05_16"
 
 def read_data():
     
@@ -100,7 +73,11 @@ def read_data():
                 if res_file.endswith(".csv"):
                     with open(res_file, "r") as f:
                         # Read results, but skip the header;
-                        result = f.readlines()[1]
+                        try:
+                            result = f.readlines()[1]
+                        except IndexError:
+                            print(f"skip empty file {res_file}")
+                            continue
                         
                         # Parse the file name;
                         try:
@@ -210,6 +187,14 @@ def read_data():
     return result_df, res_agg
 
 
+# Round a number to the closest power of 10.
+# E.g. 488 -> 100; 560 -> 1000
+def fix_edge_number(val):
+    exp = int(np.log10(val))
+    rem = np.round(val / 10**(exp + 1))
+    return 10**(exp + rem)
+
+
 if __name__ == "__main__":
     
     sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
@@ -221,192 +206,160 @@ if __name__ == "__main__":
     
     res, agg = read_data()
     
-    # Skip float results;
-    res = res[res["n_bit"] != "float"]
+    #%%
     
     # Consider only graphs with 100k vertices;
-    res = res[res["V"] == 2 * 10**5]
-    # res = res[~res["V"].isin([10**5, 2 * 10**5])]
+    res = res[res["V"] == 10**5]
+    
+    # Fix the number of edges;
+    # res["E_fixed"] = res["E"].apply(fix_edge_number)
+    replace_edge_map = {
+        499107: 5 * 10**5,
+        1001339: 10**6,
+        100000324: 10**8,
+        119678: 10**5,
+        5005110: 5 * 10**6,
+        10002330: 10**7,
+        501312: 5 * 10**5,
+        857872: 10**6,
+        3528924: 5 * 10**6,
+        249660: 10**5,
+        6853340: 10**7,
+        65980874: 10**8,
+        844974: 10**6,
+        3533124: 5 * 10**6,
+        182874: 10**5,
+        492796: 5 * 10**5,
+        6866454: 10**7
+        }
+    res["E_fixed"] = res["E"].replace(replace_edge_map, inplace=False)
+    
+    # Compute sparsity;
+    res["sparsity"] = res["E_fixed"] / (res["V"] * res["V"])
+   
+    
+    sparsities = [str(x) for x in sorted(res["sparsity"].unique())]
+    
     
     #%%
     
-    # Setup plot;
-    graph_names = ["$\mathdefault{G_{n,p}}$", "Watts–Strogatz", "Holme and Kim"]
-    error_metrics = ["Num. Errors", "Edit Distance", "NDCG (higher is better)"]
-    error_metrics_raw = ["errors", "edit-dist", "ndcg"]
-    error_max = [50, 50, 1]
-    error_min = [0, 0, 0.9]
-    error_sizes = [10, 20, 50]
-    num_col = len(res["graph_name"].unique())
-    num_rows = len(error_metrics) 
-    fig = plt.figure(figsize=(2.0 * num_col, 2.8 * num_rows))
-    gs = gridspec.GridSpec(num_rows, num_col)
-    plt.subplots_adjust(top=0.80,
-                    bottom=0.10,
-                    left=0.18,
-                    right=0.95,
-                    hspace=0.6,
-                    wspace=0.6)
-
-    markers = ["o", "X", "D"]
-        
-    # One row per graph;
-    for i, group in enumerate(res.groupby(["graph_name"])):
-        data = group[1]
-        data = data.melt(id_vars=["n_bit"], value_vars=[e + "_" + str(d) for e in error_metrics_raw for d in error_sizes])
-        data["error_type"] = [s.split("_")[0] for s in data["variable"]]
-        data["error_size"] = [int(s.split("_")[1]) for s in data["variable"]]
-        
-        # One column per error metric;
-        for j, e in enumerate(error_metrics_raw):
-            
-            curr_data = data[data["error_type"] == e]
-            ax = fig.add_subplot(gs[j, i])
-            ax = sns.lineplot(x="n_bit", y="value", hue="error_size", data=curr_data, palette=[r1, b8, b2], ax=ax,
-                  err_style="bars", linewidth=3, legend=False, zorder=2, ci=None)
-            data_averaged = curr_data.groupby(["n_bit", "error_size"], as_index=False).mean()
-            ax = sns.scatterplot(x="n_bit", y="value", hue="error_size", data=data_averaged, palette=[r1, b8, b2], ax=ax, edgecolor="#0f0f0f",
-                  size_norm=30, legend=False, zorder=3, ci=None, markers=markers, style="error_size", linewidth=0.05)
-            ax.set_ylim([error_min[j], error_max[j]])
-            ax.set_xlim([min(curr_data["n_bit"]), max(curr_data["n_bit"])])
-            ax.set_xlabel(None)
-            if i == 0:
-                ax.set_ylabel(f"{error_metrics[j]}", fontsize=16)
-            else:
-                ax.set_ylabel(None)
-            # if i == 0:
-            #      # Graph name;
-            ax.annotate(f"{graph_names[i]}",
-                        xy=(0.5, 1), xycoords="axes fraction", fontsize=14, textcoords="offset points", xytext=(0, 15),
-                        horizontalalignment="center", verticalalignment="center")
-            # ax.set_title(f"{graph_names[i]}", fontsize=14, loc="center", xytext=(-40, 25))
-            
-            # Set the number of ticks on the y axis;
-            ax.yaxis.set_major_locator(plt.MaxNLocator(5))
-
-               
-            if j == 2:
-                ax.set_yticklabels(labels=[f"{int(l * 100)}%" for l in ax.get_yticks()], ha="right")
-                
-            # Turn off tick lines;
-            ax.xaxis.grid(False)  
-            sns.despine(ax=ax)              
-            ax.tick_params(labelcolor="black", labelsize=12, pad=6)
-            
-              
-            
-    plt.annotate("Fixed-point Bitwidth", fontsize=18, xy=(0.5, 0.015), xycoords="figure fraction", ha="center")
-           
-    fig.suptitle(f"PPR Accuracy w.r.t\nfixed-point bitwidth,\n|V|= {get_exp_label(2 * 10**5)}, |E|=~{get_exp_label(2 * 10**6)}",
-                 fontsize=18, ha="left", x=0.05)
-    
-    # Legend;
-    custom_lines = [
-        Line2D([], [], color="white", marker=markers[0],
-               markersize=10, label="Top-10", markerfacecolor=r1, markeredgecolor="#2f2f2f"),
-        Line2D([], [], color="white", marker=markers[1],
-               markersize=10, label="Top-20", markerfacecolor=b8, markeredgecolor="#2f2f2f"),
-        Line2D([], [], color="white", marker=markers[2],
-               markersize=10, label="Top-50", markerfacecolor=b2, markeredgecolor="#2f2f2f"),
-        ]
-    
-    leg = fig.legend(custom_lines, ["Top-10", "Top-20", "Top-50"],
-                             bbox_to_anchor=(0.98, 1), fontsize=16)
-    leg.set_title(None)
-    leg._legend_box.align = "left"
-            
-    plt.savefig(f"../../../../data/plots/errors_{DATE}_large.pdf")
-    
-    
-    #%% Same plot, but aggregate over all graphs;
-
-    res, agg = read_data()
-    
-    res = res[res["n_bit"] != "float"]
-    
-    #%%
+    res2 = res[(res["graph_name"] != "pc") & (res["sparsity"] <= 0.0005) & (res["n_bit"] != "float")]
+    res2["sparsity_str"] = res2["sparsity"].astype(str)
     
     plt.rcParams['mathtext.fontset'] = "cm" 
     
     # Setup plot;
-    error_metrics = ["Num. Errors", "Edit Distance", "NDCG\n(higher is better)", "MAE", "Precision\n(higher is better)", "Kendall's " + r"$\mathbf{\tau}$" + "\n(higher is better)"]
-    error_metrics_raw = ["errors", "edit-dist", "ndcg", "mae", "prec", "kendall"]
-    error_max = [50, 50, 1, 0.12, 1, 1]
-    error_min = [0, 0, 0.9, 0, 0.7, 0.6]
+    N = 50
+    error_metrics = ["Precision\n(higher is better)"] # ["Num. Errors", "Edit Distance", "NDCG\n(higher is better)", "MAE", "Precision\n(higher is better)", "Kendall's " + r"$\mathbf{\tau}$" + "\n(higher is better)"]
+    error_metrics_raw = [f"prec_{N}"] # [f"errors_{N}", f"edit-dist_{N}", f"ndcg_{N}", f"mae_{N}", f"prec_{N}", f"kendall_{N}"]
+    error_max = [1] # [N, N, 1, 0.12, 1, 1]
+    error_min = [0.3] # [0, 0, 0.6, 0, 0.3, 0.0]
     error_sizes = [10, 20, 50]
-    num_rows = 2
-    num_col = len(error_metrics) // num_rows
+    
+    num_iters = sorted(res["max_iter"].unique())
+    num_rows = len(error_metrics)
+    num_col = len(num_iters) 
 
-    fig = plt.figure(figsize=(2.0 * num_col, 3.1 * num_rows))
+    # N Rows;
+    # fig = plt.figure(figsize=(2.0 * num_col, 3.1 * num_rows))
+    # gs = gridspec.GridSpec(num_rows, num_col)
+    # plt.subplots_adjust(top=0.85,
+    #                 bottom=0.12,
+    #                 left=0.12,
+    #                 right=0.95,
+    #                 hspace=0.8,
+                    # wspace=0.6)
+    # 1 Row;
+    fig = plt.figure(figsize=(2.0 * num_col, 3.4 * num_rows))
     gs = gridspec.GridSpec(num_rows, num_col)
-    plt.subplots_adjust(top=0.75,
-                    bottom=0.12,
+    plt.subplots_adjust(top=0.6,
+                    bottom=0.18,
                     left=0.12,
                     right=0.95,
                     hspace=0.8,
                     wspace=0.6)
 
-    data = res.melt(id_vars=["n_bit"], value_vars=[e + "_" + str(d) for e in error_metrics_raw for d in error_sizes])
-    data["error_type"] = [s.split("_")[0] for s in data["variable"]]
-    data["error_size"] = [int(s.split("_")[1]) for s in data["variable"]]
+    bitwidths_num = len(res2["n_bit"].unique())
+    palette_list = [bb5, bb4, bb3, bb2, r1]
+    palette = palette_list[:bitwidths_num]
+    markers_list = ["o", "X", "^", "D", "D"]
+    markers = markers_list[:bitwidths_num]
     
-    markers = ["o", "X", "D"]
-    
-    # One column per error metric;
-    for j, e in enumerate(error_metrics_raw):
-        
-        curr_data = data[data["error_type"] == e]
-        ax = fig.add_subplot(gs[j // num_col, j % num_col])
-        ax = sns.lineplot(x="n_bit", y="value", hue="error_size", data=curr_data, palette=[r1, b8, b2], ax=ax,
-              err_style="bars", linewidth=3, legend=False, zorder=2, ci=None, estimator="mean")
-        data_averaged = curr_data.groupby(["n_bit", "error_size"], as_index=False).mean()
-        ax = sns.scatterplot(x="n_bit", y="value", hue="error_size", data=data_averaged, palette=[r1, b8, b2], ax=ax, edgecolor="#0f0f0f",
-              size_norm=30, legend=False, zorder=3, ci=None, markers=markers, style="error_size", linewidth=0.05)
-        ax.set_ylim([error_min[j], error_max[j]])
-        ax.set_xlim([min(curr_data["n_bit"]), max(curr_data["n_bit"])])
-        ax.set_xlabel(None)
-        ax.set_ylabel(None)
-       
-        ax.annotate(f"{error_metrics[j]}",
-                    xy=(0.5, 1), xycoords="axes fraction", fontsize=12, textcoords="offset points", xytext=(0, 20),
-                    horizontalalignment="center", verticalalignment="center")
-        # ax.set_title(f"{graph_names[i]}", fontsize=14, loc="center", xytext=(-40, 25))
-        
-        # Set the number of ticks on the y axis;
-        ax.yaxis.set_major_locator(plt.MaxNLocator(5))
-
+    for i, num_iter in enumerate(num_iters):
+        # One row per error metric;
+        for j, e in enumerate(error_metrics_raw):
+            
+            curr_data = res2[res2["max_iter"] == num_iter]
+            curr_data = curr_data.sort_values(by=["sparsity", "n_bit"])
+            
+            ax = fig.add_subplot(gs[j, i])
+            ax = sns.lineplot(x="sparsity_str", y=e, hue="n_bit", data=curr_data, palette=palette, ax=ax,
+                  err_style="bars", linewidth=3, legend=None, zorder=2, ci=None, estimator="mean", sort=False)
+            data_averaged = curr_data.groupby(["sparsity_str", "n_bit"], as_index=False).mean()
+            ax = sns.scatterplot(x="sparsity_str", y=e, hue="n_bit", data=data_averaged, palette=palette, ax=ax, edgecolor="#0f0f0f",
+                  size_norm=20, legend=False, zorder=3, ci=None, markers=markers, style="n_bit", linewidth=0.05, clip_on=False)
+            ax.set_ylim([error_min[j], error_max[j]])
+            # ax.set_xlim([min(curr_data["n_bit"]), max(curr_data["n_bit"])])
+            
+            if j == len(error_metrics_raw) - 1:
+                ax.set_xlabel(f"{num_iter} Iterations")
+            else:
+                ax.set_xlabel(None)
+            ax.set_ylabel(None)
            
-        if j == 2:
+            ax.annotate(f"{error_metrics[j]}",
+                        xy=(0.5, 1), xycoords="axes fraction", fontsize=12, textcoords="offset points", xytext=(0, 20),
+                        horizontalalignment="center", verticalalignment="center")
+            # ax.set_title(f"{graph_names[i]}", fontsize=14, loc="center", xytext=(-40, 25))
+            
+            # Set the number of ticks on the y axis;
+            # ax.yaxis.set_major_locator(plt.MaxNLocator(5))
+            
+            # Only for 1 row with precision;
+            ax.set_yticks([(i + 1) / 5 for i in range(1, 5)])
             ax.set_yticklabels(labels=[f"{int(l * 100)}%" for l in ax.get_yticks()], ha="right", fontsize=12)
             
-        # Turn off tick lines;
-        ax.xaxis.grid(False)  
-        sns.despine(ax=ax)              
-        ax.tick_params(labelcolor="black", labelsize=12, pad=6)
+            ax.set_xticklabels(labels=[r"$\mathdefault{" +
+                                       ((r"10^{" + str(int(np.log10(float(x))))) if (1 * float(x)) / 10**int(np.log10(float(x))) >= 1
+                                        else (r"5\!·\!10^{" + str(int(np.log10(float(x))) - 1))) + r"}}$"
+                                        for x in sparsities])
+            if j == 2:
+                ax.set_yticklabels(labels=[f"{int(l * 100)}%" for l in ax.get_yticks()], ha="right", fontsize=12)
+                
+            # Turn off tick lines;
+            ax.xaxis.grid(False)  
+            sns.despine(ax=ax)              
+            ax.tick_params(axis="y", labelcolor="black", labelsize=12, pad=6)
+            ax.tick_params(axis="x", labelcolor="black", labelsize=9, pad=4)
+                
+                  
             
-              
-            
-    plt.annotate("Fixed-point Bitwidth", fontsize=16, xy=(0.5, 0.015), xycoords="figure fraction", ha="center")
+    # plt.annotate("Fixed-point Bitwidth", fontsize=16, xy=(0.5, 0.015), xycoords="figure fraction", ha="center")
            
-    fig.suptitle(f"PPR Accuracy w.r.t\nfixed-point bitwidth,\naggregated over all graphs",
-                 fontsize=18, ha="left", x=0.05)
+    fig.suptitle(f"Top-50 Precision w.r.t\nsparsity level and bit-width,\nfor increasing number of iterations",
+                 fontsize=15, ha="left", x=0.05)
     
     # Legend;    
+    bit_widths = ["20", "22", "24", "26", "Float"]
     custom_lines = [
-        Line2D([], [], color="white", marker=markers[0],
-               markersize=10, label="Top-10", markerfacecolor=r1, markeredgecolor="#2f2f2f"),
-        Line2D([], [], color="white", marker=markers[1],
-               markersize=10, label="Top-20", markerfacecolor=b8, markeredgecolor="#2f2f2f"),
-        Line2D([], [], color="white", marker=markers[2],
-               markersize=10, label="Top-50", markerfacecolor=b2, markeredgecolor="#2f2f2f"),
-        ]
+        Line2D([], [], color="white", marker=markers_list[0],
+               markersize=10, label=bit_widths[0], markerfacecolor=palette_list[0], markeredgecolor="#2f2f2f"),
+        Line2D([], [], color="white", marker=markers_list[1],
+               markersize=10, label=bit_widths[1], markerfacecolor=palette_list[1], markeredgecolor="#2f2f2f"),
+        Line2D([], [], color="white", marker=markers_list[2],
+               markersize=10, label=bit_widths[2], markerfacecolor=palette_list[2], markeredgecolor="#2f2f2f"),
+        Line2D([], [], color="white", marker=markers_list[3],
+               markersize=10, label=bit_widths[3], markerfacecolor=palette_list[3], markeredgecolor="#2f2f2f"),
+        Line2D([], [], color="white", marker=markers_list[4],
+               markersize=10, label=bit_widths[4], markerfacecolor=palette_list[4], markeredgecolor="#2f2f2f"),
+        ][:bitwidths_num]
     
-    leg = fig.legend(custom_lines, ["Top-10", "Top-20", "Top-50"],
-                             bbox_to_anchor=(0.98, 1), fontsize=12)
+    leg = fig.legend(custom_lines, bit_widths[:bitwidths_num],
+                             bbox_to_anchor=(0.98, 1), fontsize=12, ncol=2)
     leg.set_title(None)
     leg._legend_box.align = "left"
             
-    plt.savefig(f"../../../../data/plots/errors_{DATE}_agg.pdf")           
+    plt.savefig(f"../../../../data/plots/sparsity_{DATE}_agg.pdf")           
     
     
     

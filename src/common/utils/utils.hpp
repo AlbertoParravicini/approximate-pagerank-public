@@ -65,11 +65,6 @@ inline void random_ints(int *v, int n, int max = RAND_MAX) {
 }
 
 template<typename T>
-inline void print_array(T *v, int n, uint max = 20) {
-	std::cout << format_array(v, n, max) << std::endl;
-}
-
-template<typename T>
 inline std::string format_array(T *v, int n, uint max = 20) {
 	int max_val = std::min(n, (int) max);
 	std::string out = "[";
@@ -90,6 +85,11 @@ inline std::string format_array(std::vector<T> &v, uint max = 20) {
 template<typename T>
 inline std::string format_array(std::vector<T, aligned_allocator<T>> &v, uint max = 20) {
 	format_array(v.data(), v.size(), max);
+}
+
+template<typename T>
+inline void print_array(T *v, int n, uint max = 20) {
+	std::cout << format_array(v, n, max) << std::endl;
 }
 
 template<typename T>

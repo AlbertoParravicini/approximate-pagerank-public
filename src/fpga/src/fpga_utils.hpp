@@ -181,10 +181,11 @@ inline fixed_float reduction_16(fixed_float input[16]) {
 	return acc;
 }
 
-inline fixed_float reduction(fixed_float input[BUFFER_SIZE]) {
+template<typename T>
+inline T reduction(T input[BUFFER_SIZE]) {
 #pragma HLS INLINE
 #pragma HLS array_partition variable=input complete
-	fixed_float acc = 0.0;
+	T acc = 0.0;
 	for (int i = 0; i < BUFFER_SIZE; ++i) {
 #pragma HLS UNROLL
 		acc += input[i];

@@ -18,6 +18,7 @@ using clock_type = chrono::high_resolution_clock;
 /////////////////////////////
 
 #define allocator aligned_allocator<input_block>
+#define float_error_allocator aligned_allocator<fixed_error_float>
 
 /////////////////////////////
 /////////////////////////////

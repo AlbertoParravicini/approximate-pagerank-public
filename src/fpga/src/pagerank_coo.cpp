@@ -15,6 +15,7 @@ void PageRankCOO::setup_inputs(ConfigOpenCL &config, bool debug) {
 	d_result = cl::Buffer(config.context, CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR, sizeof(input_block) * num_blocks_N * N_PPR_VERTICES, result_out.data());
 	d_dangling_bitmap = cl::Buffer(config.context, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, sizeof(input_block) * num_blocks_bitmap, dangling_bitmap_in.data());
 	d_personalization_vertices = cl::Buffer(config.context, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, sizeof(index_type) * N_PPR_VERTICES, personalization_vertices.data());
+	d_errors = cl::Buffer(config.context, CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR, sizeof(fixed_error_float) * max_iter * N_PPR_VERTICES, errors.data());
 
 	int narg = 0;
 	config.kernel.setArg(narg++, d_coo_start);
@@ -28,6 +29,7 @@ void PageRankCOO::setup_inputs(ConfigOpenCL &config, bool debug) {
 	config.kernel.setArg(narg++, alpha);
 	config.kernel.setArg(narg++, max_iter);
 	config.kernel.setArg(narg++, d_personalization_vertices);
+	config.kernel.setArg(narg++, d_errors);
 }
 
 /////////////////////////////
@@ -100,7 +102,7 @@ double PageRankCOO::execute(ConfigOpenCL &config, bool measure_time, bool debug)
 	config.queue.finish();
 
 	// Read back the results from the device to verify the output
-	config.queue.enqueueMigrateMemObjects( { d_result }, CL_MIGRATE_MEM_OBJECT_HOST);
+	config.queue.enqueueMigrateMemObjects( { d_result, d_errors }, CL_MIGRATE_MEM_OBJECT_HOST);
 	config.queue.finish();
 	auto elapsed = chrono::duration_cast<chrono::nanoseconds>(clock_type::now() - start).count();
 
@@ -135,6 +137,37 @@ double PageRankCOO::reset(ConfigOpenCL &config, bool measure_time, bool debug) {
 		return -1;
 	}
 }
+
+double PageRankCOO::reset(ConfigOpenCL &config, std::vector<index_type> &personalization_vertices, bool measure_time, bool debug) {
+	if (debug) {
+		std::cout << "Setting new personalization vertices" << std::endl;
+		print_array(personalization_vertices);
+		if (personalization_vertices.size() > N_PPR_VERTICES) {
+			std::cout << "Warning: using only " << N_PPR_VERTICES << " out of specified " << personalization_vertices.size() << " vertices!" << std::endl;
+		}
+	}
+	for(int i = 0; i < N_PPR_VERTICES; i++){
+		if (i < personalization_vertices.size()) {
+			this->personalization_vertices[i] = personalization_vertices[i];
+		}
+	}
+
+	// Transfer data from host to device (0 means host-to-device transfer);
+	cl::Event e;
+	config.queue.enqueueMigrateMemObjects( { d_personalization_vertices }, 0, NULL, &e);
+	e.wait();
+
+	if (measure_time) {
+		double elapsed = get_event_execution_time(e);
+		if (debug) {
+			std::cout << "Reset data transfer took " << elapsed / 10e6 << " ms" << std::endl;
+		}
+		return elapsed / 10e6;
+	} else {
+		return -1;
+	}
+}
+
 
 ////////////////////////////
 ////////////////////////////
