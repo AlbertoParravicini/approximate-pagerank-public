@@ -78,7 +78,6 @@ venv/
 # CMake
 cmake-build-*/
 
-build/
 
 # VSCode 
 .vscode/
