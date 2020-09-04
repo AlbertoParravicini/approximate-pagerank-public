@@ -1,7 +1,5 @@
 Alberto Parravicini, Francesco Sgherzi
 
-* Email: alberto.parravicini@polimi.it, francesco1.sgherzi@mail.polimi.it
-
 Board used: Alveo U200, FPGA: xcu200-fsgd2104-2-e
 
 Software Version: Xilinx Vivado HLS 2018.3, Xilinx SDx 2018.3
